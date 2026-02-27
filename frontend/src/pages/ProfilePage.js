@@ -18,7 +18,7 @@ function ProfilePage({ user, onLogout }) {
   const handleLogout = () => {
     if (window.confirm('Are you sure you want to log out?')) {
       onLogout();
-      navigate('/login');
+      navigate('/auth');
     }
   };
 
@@ -51,7 +51,10 @@ function ProfilePage({ user, onLogout }) {
       setProfileUser(response.data);
       // Check if current user is following this user
       const currentUserRes = await authAPI.getProfile();
-      setIsFollowing(currentUserRes.data.following.includes(userId));
+      const isFollowingUser = currentUserRes.data.following.some(
+        (followedUser) => followedUser._id === userId || followedUser === userId
+      );
+      setIsFollowing(isFollowingUser);
     } catch (err) {
       setError('Failed to load profile: ' + (err.response?.data?.message || err.message));
       console.error('Profile fetch error:', err);

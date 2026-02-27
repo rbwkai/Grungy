@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const cloudinary = require('../config/cloudinary');
 const { Readable } = require('stream');
+const fs = require('fs');
 
 // Generate JWT Token
 const generateToken = (id) => {
@@ -124,49 +125,78 @@ exports.updateProfile = async (req, res) => {
     }
 
     // Handle avatar upload
-    if (req.files && req.files.avatar) {
-      const avatarFile = req.files.avatar[0];
-      const stream = Readable.from(avatarFile.buffer);
+    if (req.files && req.files.avatar && req.files.avatar[0]) {
+      try {
+        const avatarFile = req.files.avatar[0];
+        const fs = require('fs');
+        const fileBuffer = fs.readFileSync(avatarFile.path);
+        const stream = Readable.from(fileBuffer);
 
-      const cloudinaryUpload = await new Promise((resolve, reject) => {
-        const uploadStream = cloudinary.uploader.upload_stream(
-          { folder: 'grungy/avatars', resource_type: 'auto' },
-          (error, result) => {
-            if (error) reject(error);
-            else resolve(result);
-          }
-        );
-        stream.pipe(uploadStream);
-      });
+        const cloudinaryUpload = await new Promise((resolve, reject) => {
+          const uploadStream = cloudinary.uploader.upload_stream(
+            { folder: 'grungy/avatars', resource_type: 'auto' },
+            (error, result) => {
+              if (error) reject(error);
+              else resolve(result);
+            }
+          );
+          stream.pipe(uploadStream);
+        });
 
-      updateData.avatar = cloudinaryUpload.secure_url;
+        updateData.avatar = cloudinaryUpload.secure_url;
+
+        // Clean up temp file
+        fs.unlink(avatarFile.path, (err) => {
+          if (err) console.error('Error deleting temp avatar file:', err);
+        });
+      } catch (uploadError) {
+        console.error('Avatar upload error:', uploadError);
+        return res.status(500).json({ message: 'Error uploading avatar', error: uploadError.message });
+      }
     }
 
     // Handle banner upload
-    if (req.files && req.files.banner) {
-      const bannerFile = req.files.banner[0];
-      const stream = Readable.from(bannerFile.buffer);
+    if (req.files && req.files.banner && req.files.banner[0]) {
+      try {
+        const bannerFile = req.files.banner[0];
+        const fs = require('fs');
+        const fileBuffer = fs.readFileSync(bannerFile.path);
+        const stream = Readable.from(fileBuffer);
 
-      const cloudinaryUpload = await new Promise((resolve, reject) => {
-        const uploadStream = cloudinary.uploader.upload_stream(
-          { folder: 'grungy/banners', resource_type: 'auto' },
-          (error, result) => {
-            if (error) reject(error);
-            else resolve(result);
-          }
-        );
-        stream.pipe(uploadStream);
-      });
+        const cloudinaryUpload = await new Promise((resolve, reject) => {
+          const uploadStream = cloudinary.uploader.upload_stream(
+            { folder: 'grungy/banners', resource_type: 'auto' },
+            (error, result) => {
+              if (error) reject(error);
+              else resolve(result);
+            }
+          );
+          stream.pipe(uploadStream);
+        });
 
-      updateData.banner = cloudinaryUpload.secure_url;
+        updateData.banner = cloudinaryUpload.secure_url;
+
+        // Clean up temp file
+        fs.unlink(bannerFile.path, (err) => {
+          if (err) console.error('Error deleting temp banner file:', err);
+        });
+      } catch (uploadError) {
+        console.error('Banner upload error:', uploadError);
+        return res.status(500).json({ message: 'Error uploading banner', error: uploadError.message });
+      }
     }
 
     const user = await User.findByIdAndUpdate(req.user.id, updateData, {
       new: true,
     }).select('-password');
 
-    res.json({ message: 'Profile updated successfully', user });
+    // Normalize response to include id field
+    const userResponse = user.toObject ? user.toObject() : user;
+    userResponse.id = user._id;
+
+    res.json({ message: 'Profile updated successfully', user: userResponse });
   } catch (error) {
+    console.error('Update profile error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };

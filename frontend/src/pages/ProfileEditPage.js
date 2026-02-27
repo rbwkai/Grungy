@@ -11,6 +11,7 @@ function ProfileEditPage({ user, onUpdateProfile }) {
     location: '',
     website: '',
     pronouns: '',
+    displayName: '',
   });
   const [avatar, setAvatar] = useState(null);
   const [banner, setBanner] = useState(null);
@@ -24,6 +25,7 @@ function ProfileEditPage({ user, onUpdateProfile }) {
     if (user) {
       setFormData({
         username: user.username || '',
+        bio: user.bio || '',
         displayName: user.displayName || '',
         location: user.location || '',
         website: user.website || '',
@@ -75,6 +77,7 @@ function ProfileEditPage({ user, onUpdateProfile }) {
     try {
       const form = new FormData();
       form.append('username', formData.username);
+      form.append('bio', formData.bio);
       form.append('displayName', formData.displayName);
       form.append('location', formData.location);
       form.append('website', formData.website);

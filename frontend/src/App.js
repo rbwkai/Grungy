@@ -20,13 +20,66 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const userData = localStorage.getItem('user');
-    if (token && userData) {
-      setIsAuthenticated(true);
-      setUser(JSON.parse(userData));
-    }
-    setLoading(false);
+    const restoreAuthState = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const userData = localStorage.getItem('user');
+        
+        if (token) {
+          // Verify token is still valid by fetching current profile
+          try {
+            const response = await fetch('http://localhost:5000/api/auth/profile', {
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            });
+            
+            if (response.ok) {
+              const profileData = await response.json();
+              // Normalize user data: convert _id to id for consistency
+              const normalizedUser = {
+                ...profileData,
+                id: profileData._id || profileData.id
+              };
+              setUser(normalizedUser);
+              localStorage.setItem('user', JSON.stringify(normalizedUser));
+              setIsAuthenticated(true);
+            } else {
+              // Token is invalid, clear auth data
+              localStorage.removeItem('token');
+              localStorage.removeItem('user');
+              setIsAuthenticated(false);
+              setUser(null);
+            }
+          } catch (error) {
+            console.error('Error validating token:', error);
+            // On error, keep user logged in if we have cached data (for offline support)
+            if (userData) {
+              const parsedUser = JSON.parse(userData);
+              // Ensure id field exists (normalize _id to id if needed)
+              const normalizedUser = {
+                ...parsedUser,
+                id: parsedUser.id || parsedUser._id
+              };
+              setUser(normalizedUser);
+              setIsAuthenticated(true);
+            } else {
+              localStorage.removeItem('token');
+              localStorage.removeItem('user');
+              setIsAuthenticated(false);
+              setUser(null);
+            }
+          }
+        } else {
+          setIsAuthenticated(false);
+          setUser(null);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    restoreAuthState();
   }, []);
 
   const handleLogin = (userData, token) => {

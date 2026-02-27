@@ -13,7 +13,7 @@ export default function HeaderBar({ user, onLogout }) {
       if (onLogout) {
         onLogout();
       }
-      navigate('/login');
+      navigate('/auth');
     }
   };
 
